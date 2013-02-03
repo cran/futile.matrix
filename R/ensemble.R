@@ -27,36 +27,35 @@
 # Trading Ideas
 #   http://ideas.repec.org/p/lei/ingber/03ai.html
 #   http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.7.1041
-ct %when% is.matrix(m)
-ct %as% function(m) Conj(t(m))
-
+ct(m) %::% matrix : matrix
+ct(m) %as% { Conj(t(m)) }
 
 # Generate a random complex number
-rcomp %when% is.function(dist)
-rcomp %as% function(n, dist)
-{
+rcomp(n, dist) %when% {
+  is.function(dist)
+} %as% {
   complex(real=dist(n), imaginary=dist(n))
 }
 
-rcomp %default% function(n) rcomp(n, rnorm)
+rcomp(n, ...) %as% rcomp(n, rnorm)
 
 # Also known as a Gaussian Orthogonal Ensemble
-rmatrix %when% (model %isa% WignerModel)
-rmatrix %also% !model$real
-rmatrix %must% (result == ct(result))
-rmatrix %as% function(model)
-{
+rmatrix(model) %::% WignerModel : matrix
+rmatrix(model) %when% {
+  !model$real
+  # result == ct(result)
+} %as% {
   n <- model$n
   x <- matrix(rcomp(n^2), nrow=n) / 2^0.5
   (x + ct(x)) / sqrt(2 * n)
 }
 
 # Also known as a Gaussian Unitary Ensemble
-rmatrix %when% (model %isa% WignerModel)
-rmatrix %also% (model$real)
-rmatrix %must% (result == t(result))
-rmatrix %as% function(model)
-{
+rmatrix(model) %::% WignerModel : matrix
+rmatrix(model) %when% {
+  model$real
+  # result == t(result)
+} %as% {
   n <- model$n
   x <- matrix(rnorm(n^2), nrow=n)
   (x + ct(x)) / sqrt(2 * n)
@@ -66,9 +65,10 @@ rmatrix %as% function(model)
 # http://www.aimath.org/conferences/ntrmt/talks/Mezzadri2.pdf
 # http://tonic.physics.sunysb.edu/~verbaarschot/lecture/lecture2.ps
 
-rmatrix %when% (model %isa% WishartModel & !model$real)
-rmatrix %as% function(model)
-{
+rmatrix(model) %::% WishartModel : matrix
+rmatrix(model) %when% {
+  !model$real
+} %as% {
   n <- model$n
   m <- model$m
   dist.fn <- function(x) rnorm(x, sd=model$sd)
@@ -76,9 +76,10 @@ rmatrix %as% function(model)
   (x %*% ct(x)) / m
 }
 
-rmatrix %when% (model %isa% WishartModel & model$real)
-rmatrix %as% function(model)
-{
+rmatrix(model) %::% WishartModel : matrix
+rmatrix(model) %when% {
+  model$real
+} %as% {
   n <- model$n
   m <- model$m
   x <- matrix(rnorm(n * m, sd=model$sd), nrow=n)
@@ -86,41 +87,43 @@ rmatrix %as% function(model)
 }
 
 
-rmatrix %when% (model %isa% JacobiModel & model$real)
-rmatrix %as% function(model)
-{
+rmatrix(model) %::% JacobiModel : matrix
+rmatrix(model) %when% {
+  model$real
+} %as% {
   n <- model$n
   m1 <- model$m1
   m2 <- model$m2
 
-  x1 <- rmatrix(create(WishartModel, n,m1, real=model$real))
-  x2 <- rmatrix(create(WishartModel, n,m2, real=model$real))
+  x1 <- rmatrix(WishartModel(n,m1, real=model$real))
+  x2 <- rmatrix(WishartModel(n,m2, real=model$real))
   solve(x1 + x2) * x1
 }
 
-create.RandomMatrixModel <- function(T, real=TRUE, ...) list(real=real, ...)
+
+RandomMatrixModel(real=TRUE, ...) %as% list(real=real, ...)
 
 # Random square matrix. Eienvalues form semicircle
-create.WignerModel <- function(T, n, ...)
+WignerModel(n, ...) %as%
 {
-  create(RandomMatrixModel, n=n, ...)
+  RandomMatrixModel(n=n, ...)
 }
 
 # n - variables
 # m - observations
-# model <- create(WishartModel,100,500, sd=1)
+# model <- WishartModel(100,500, sd=1)
 # hist(eigenvalues(rmatrix(model)))
-create.WishartModel <- function(T, n, m, sd=1, ...)
+WishartModel(n, m, sd=1, ...) %as%
 {
-  create(RandomMatrixModel, n=n, m=m, Q=m/n, sd=sd, ...)
+  RandomMatrixModel(n=n, m=m, Q=m/n, sd=sd, ...)
 }
 
-create.JacobiModel <- function(T, n, m1, m2, ...)
+JacobiModel(n, m1, m2, ...) %as%
 {
-  create(RandomMatrixModel, n=n, m1=m1, m2=m2, ...)
+  RandomMatrixModel(n=n, m1=m1, m2=m2, ...)
 }
 
-create.Ensemble <- function(T, count, model)
+Ensemble(count, model) %as%
 {
   out <- lapply(seq(count), function(junk) rmatrix(model))
   attr(out, 'model') <- class(model)[1]
@@ -137,19 +140,18 @@ print.Ensemble <- function(x, ...)
 }
 
 
-eigenvalues %when% (is.matrix(m))
-eigenvalues %as% function(m)
-{
+
+eigenvalues(m) %::% matrix : numeric
+eigenvalues(m) %as% {
   o <- eigen(m, only.values=TRUE)
   o$values
 }
 
 # Example
-# en <- create(Ensemble, 50, create(WignerModel, 200))
+# en <- Ensemble(50, WignerModel(200))
 # hist(max_eigen(en), freq=FALSE)
-max_eigen %when% (ensemble %isa% Ensemble)
-max_eigen %as% function(ensemble)
-{
+max_eigen(ensemble) %::% Ensemble : numeric
+max_eigen(ensemble) %as% {
   es <- lapply(ensemble, eigen, only.values=TRUE)
   sapply(es, function(x) x$values[1])
 }
@@ -157,9 +159,7 @@ max_eigen %as% function(ensemble)
 
 
 # Convenience functions
-hermitian %when% (TRUE)
-hermitian %as% function(rank) rmatrix(rank, create(HermitianModel))
+hermitian(rank) %as% rmatrix(rank, HermitianModel())
 
-symmetric %when% (TRUE)
-symmetric %as% function(rank) rmatrix(rank, create(RealSymmetricModel))
+symmetric(rank) %as% rmatrix(rank, RealSymmetricModel())
 

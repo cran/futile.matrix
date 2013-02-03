@@ -1,12 +1,10 @@
-dmatrix %when% (model %isa% WignerModel)
-dmatrix %as% function(x, model)
-{
+dmatrix(x, model) %::% a : WignerModel : a
+dmatrix(x, model) %as% {
   sqrt(4 - x^2) / (2 * pi)
 }
 
-dmatrix %when% (model %isa% WishartModel)
-dmatrix %as% function(x, model)
-{
+dmatrix(x, model) %::% a : WishartModel : a
+dmatrix(x, model) %as% {
   var <- model$sd^2
   bounds <- domain(model)
   b.neg <- bounds[1]
@@ -15,11 +13,9 @@ dmatrix %as% function(x, model)
   ind * model$Q / (2*pi*var*x) * sqrt((x - b.neg) * (b.pos - x))
 }
 
-dmatrix %when% (model %isa% JacobiModel)
-dmatrix %as% function(x, model)
-{
-  lg <- getLogger("futile.matrix")
-  lg(WARN, "This function is incomplete")
+dmatrix(x, model) %::% a : JacobiModel : a
+dmatrix(x, model) %as% {
+  flog.warn("This function is incomplete")
   c1 <- model$n / model$m1
   c2 <- model$n / model$m2
   c0 <- c1*x + x^3*c1 - 2*c1*x^2 - c2*x^3 + c2*x^2
@@ -38,10 +34,11 @@ dmatrix %as% function(x, model)
 }
 
 # Get the bounds of the eigenvalues for the given model
-domain %when% (model %isa% WishartModel)
-domain %also% (model %hasa% sd & model %hasa% Q)
-domain %as% function(model)
-{
+domain(model) %::% WishartModel : numeric
+domain(model) %when% {
+  model %hasa% sd
+  model %hasa% Q
+} %as% {
   domain.min <- model$sd^2 * (1 - sqrt(1/model$Q))^2
   domain.max <- model$sd^2 * (1 + sqrt(1/model$Q))^2
   c(domain.min, domain.max)
