@@ -4,9 +4,23 @@
 RandomMatrixFilter(...) %as% list(...)
 MaximumLikelihoodFit(...) %as% list(...)
 
+#' Calculate the upper bound of the noise spectrum
+#'
+#' Finds the cutoff point between the noise portion of the eigenvalue
+#' spectrum and the "signal" part.
+#'
+#' @section Usage:
+#' cutoff(p) %::% matrix : numeric
+#'
+#' cutoff(p, es, estimator) %::% matrix : list : RandomMatrixFilter : numeric
+#'
+#' @name cutoff
+#' @aliases RandomMatrixFilter MaximumLikelihoodFit
 #' @param p A random matrix
+#' @return The eigenvalue associated with the upper bound of the noise
+#' spectrum
 #' @examples
-#' cutoff(rmatrix())
+#' cutoff(rmatrix(WignerModel(100)))
 cutoff(p) %::% matrix : numeric
 cutoff(p) %as% {
   es <- eigen(p, symmetric=TRUE)
@@ -14,7 +28,7 @@ cutoff(p) %as% {
 }
 
 # Provide a default implementation
-cutoff(p, es, estimator) %::% matrix : list : RandomMatrixFilter : numeric
+cutoff(p, es, estimator) %::% matrix : eigen : RandomMatrixFilter : numeric
 cutoff(p, es, estimator) %when% {
   ! estimator %hasa% fit.fn
 } %as% {
@@ -23,7 +37,7 @@ cutoff(p, es, estimator) %when% {
   cutoff(p, es, estimator)
 }
 
-cutoff(p, es, estimator) %::% matrix : list : RandomMatrixFilter : numeric
+cutoff(p, es, estimator) %::% matrix : eigen : RandomMatrixFilter : numeric
 cutoff(p, es, estimator) %as% {
   fit <- estimator$fit.fn(es)
   Q <- fit$par[1]
@@ -33,20 +47,30 @@ cutoff(p, es, estimator) %as% {
   lambda.plus
 }
 
+# This is for backwards compatibility since newer versions of R use an
+# 'eigen' class for the result of eigen instead of 'list'
+cutoff(p, es, estimator) %::% matrix : list : RandomMatrixFilter : numeric
+cutoff(p, es, estimator) %as% {
+  class(es) <- c('eigen', class(es))
+  cutoff(p, es, estimator)
+}
 
-# model <- WishartModel(50, 200)
-# mat <- rmatrix(model)
-# es <- eigen(mat)
-# fit.density(es, MaximumLikelihoodFit(hint=c(1,1)))
-#
-# Don't use ks.test with estimated parameters
-#   http://astrostatistics.psu.edu/su07/R/html/stats/html/ks.test.html
-# Alternatives:
-#   http://www-cdf.fnal.gov/physics/statistics/notes/cdf1285_KS_test_after_fit.pdf
-#   http://journals.ametsoc.org/doi/pdf/10.1175/MWR3326.1
-# ks.test(es$values, 'pmp', svr=theta[1], var=theta[2])
-
-fit.density(lambda, fitter) %::% list : MaximumLikelihoodFit : list
+#' Fit the eigenvalue spectrum to model
+#'
+#' This only works for fitting the Marcenko-Pastur distribution. It's
+#' also not designed for external use.
+#'
+#' @name fit.density
+#' @param lambda Eigenvalues
+#' @param fitter A fit function
+#' @return Optimal parameters
+#' @examples
+#' \dontrun{
+#' m <- rmatrix(WishartModel(50, 200))
+#' es <- eigen(m)
+#' fit.density(es, MaximumLikelihoodFit(hint=c(1,1)))
+#' }
+fit.density(lambda, fitter) %::% eigen : MaximumLikelihoodFit : list
 fit.density(lambda, fitter) %as% {
   really.big <- 100000000000
   x <- lambda$values
@@ -58,5 +82,12 @@ fit.density(lambda, fitter) %as% {
     s
   }
   optim(fitter$hint, fn)
+}
+
+fit.density(lambda, fitter) %::% list : MaximumLikelihoodFit : list
+fit.density(lambda, fitter) %as% {
+  # For backwards compatibility
+  class(lambda) <- 'eigen'
+  fit.density(lambda, fitter)
 }
 
